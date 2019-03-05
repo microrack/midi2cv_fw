@@ -1,1 +1,1 @@
-st-flash write build/urack.bin 0x08000000
+st-flash write build/midi2cv_fw.bin 0x08000000
