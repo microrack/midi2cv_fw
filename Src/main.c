@@ -41,6 +41,7 @@
 
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include <math.h>
 
 /* USER CODE END Includes */
 
@@ -52,6 +53,8 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+
+char midi_rx[1];
 
 /* USER CODE END PV */
 
@@ -71,6 +74,16 @@ static void MX_DAC1_Init(void);
 
 char str[64];
 
+const float SLOPE = 15.0;
+const float OFFSET = 150.0;
+
+void set_freq(float freq) {
+  uint16_t value = (uint16_t)(SLOPE * freq + OFFSET);
+
+  sprintf(str, "v %d\n", value);
+  HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
+  HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, value);
+}
 /* USER CODE END 0 */
 
 int main(void)
@@ -104,29 +117,50 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
+  
+
+  HAL_UART_Receive_IT(&huart1, midi_rx, 1);
+
   sprintf(str, "\n\n==== uRack start ====\n");
   HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
+  
+  HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
+
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  // uint16_t value = 1000; // 332 Hz
+  // uint16_t value = 500; // 183
+  // uint16_t value = 250; // 95
+
   while (1)
   {
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-    HAL_Delay(100);
-
-    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-    HAL_Delay(100);
-
-    
-
+    for(float g = 45; g < 500; g += 100) {
+      for(float f = g; f < 400 + g; f += 50) {
+        // set_freq(f);
+        HAL_Delay(40);
+        // HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+      }
+    }
   }
   /* USER CODE END 3 */
 
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart) {
+  HAL_UART_Receive_IT(&huart1, midi_rx, 1);
+  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
+  float f = pow(2, ((float)midi_rx[0] - 69) / 10.0) * 440.0;
+  sprintf(str, "f %d ", (uint32_t)midi_rx[0]);
+  HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
+
+  set_freq(f);
 }
 
 /** System Clock Configuration
@@ -229,8 +263,8 @@ static void MX_USART1_UART_Init(void)
 {
 
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
-  huart1.Init.WordLength = UART_WORDLENGTH_7B;
+  huart1.Init.BaudRate = 31250;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
   huart1.Init.Mode = UART_MODE_TX_RX;

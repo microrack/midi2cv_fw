@@ -68,15 +68,26 @@ void SysTick_Handler(void)
 /* please refer to the startup file (startup_stm32l4xx.s).                    */
 /******************************************************************************/
 
+extern UART_HandleTypeDef huart2;
+char str[64];
+
 /**
 * @brief This function handles USART1 global interrupt.
 */
 void USART1_IRQHandler(void)
 {
+
   /* USER CODE BEGIN USART1_IRQn 0 */
 
   /* USER CODE END USART1_IRQn 0 */
+  
   HAL_UART_IRQHandler(&huart1);
+
+  /*
+  sprintf(str, "rcv");
+  HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
+  */
+
   /* USER CODE BEGIN USART1_IRQn 1 */
 
   /* USER CODE END USART1_IRQn 1 */
