@@ -42,6 +42,7 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <math.h>
+#include "nanomidi.h"
 
 /* USER CODE END Includes */
 
@@ -82,15 +83,38 @@ void set_freq(float freq) {
   // HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, value);
 }
 
+struct midi_buffer buf;
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart) {
   HAL_UART_Receive_IT(&huart1, midi_rx, 1);
-  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
+  midi_parse(&buf, midi_rx, 1);
+
+  /*
   float f = pow(2, ((float)midi_rx[0] - 69) / 10.0) * 440.0;
   sprintf(str, "f %d ", (uint32_t)midi_rx[0]);
   HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
+  */
 
   // set_freq(f);
+}
+
+void handle_msg(struct midi_msg *msg) {
+  switch(msg->type) {
+    case MIDI_NOTE_ON:
+      sprintf(str, "Note on #%d note=%d velocity=%d\n", msg->channel, msg->data[0], msg->data[1]);
+      HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
+      break;
+    case MIDI_NOTE_OFF:
+      sprintf(str, "Note off #%d note=%d velocity=%d\n", msg->channel, msg->data[0], msg->data[1]);
+      HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
+      break;
+    case MIDI_PROGRAM_CHANGE:
+      // printf("Program change #%d program=%d\n", msg->channel, msg->data[0]);
+      break;
+    default:
+      break;
+    }
 }
 
 /* USER CODE END 0 */
@@ -124,6 +148,10 @@ int main(void)
   MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
+
+  midi_buffer_init(&buf);
+  buf.callback = handle_msg;
+  buf.channel_mask = 0xff;
 
   
 
