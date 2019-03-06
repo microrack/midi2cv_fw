@@ -115,28 +115,81 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart) {
   // set_freq(f);
 }
 
+#define NOTE_ARRAY_SIZE 8
+uint8_t note_array[NOTE_ARRAY_SIZE] = {0};
+size_t current_note = 0;
+
+void add_note(uint8_t note) {
+  for(size_t i = 0; i < NOTE_ARRAY_SIZE; i++) {
+    if(note_array[i] == 0) {
+      note_array[i] = note;
+      return;
+    }
+  }
+}
+
+void remove_note(uint8_t note) {
+  for(size_t i = 0; i < NOTE_ARRAY_SIZE; i++) {
+    if(note_array[i] == note) {
+      note_array[i] = 0;
+    }
+  }
+}
+
+uint8_t next_note() {
+  static size_t current_playing_note = 0;
+
+  for(size_t i = 0; i < NOTE_ARRAY_SIZE; i++) {
+    uint8_t note_idx = (i + current_playing_note) % NOTE_ARRAY_SIZE;
+    if(note_array[note_idx] > 0) {
+      current_playing_note = note_idx + 1;
+      return note_array[note_idx];
+    }
+  }
+
+  return 0;
+}
+
+uint8_t note_size() {
+  uint8_t size = 0;
+  for(size_t i = 0; i < NOTE_ARRAY_SIZE; i++) {
+    if(note_array[i] > 0) {
+      size += 1;
+    }
+  }
+
+  return size;
+}
+
 void handle_msg(struct midi_msg *msg) {
   switch(msg->type) {
     case MIDI_NOTE_ON:
-      sprintf(str, "Note on #%d note=%d velocity=%d\n", msg->channel, msg->data[0], msg->data[1]);
+      /*
+      sprintf(str, "Noteon note=%d vel=%d\n", msg->channel, msg->data[0], msg->data[1]);
       HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
-
-      int16_t note = msg->data[0] - 40;
-      note = (note > 0 ? note : 0);
-      pwm_set((uint16_t)(note * 78 / 12));
+      */
 
       if(msg->data[1] > 0) {
-        HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+        add_note(msg->data[0]);
+        // HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
       } else {
-        HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+        remove_note(msg->data[0]);
+        // HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
       }
+
+      /*
+      sprintf(str, "Note size: %d\n", note_size());
+      HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
+      */
 
       break;
     case MIDI_NOTE_OFF:
-      sprintf(str, "Note off #%d note=%d velocity=%d\n", msg->channel, msg->data[0], msg->data[1]);
-      HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
+      // sprintf(str, "Note off #%d note=%d velocity=%d\n", msg->channel, msg->data[0], msg->data[1]);
+      // HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
 
-      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+      remove_note(msg->data[0]);
+
+      // HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
       break;
     case MIDI_PROGRAM_CHANGE:
       // printf("Program change #%d program=%d\n", msg->channel, msg->data[0]);
@@ -203,16 +256,33 @@ int main(void)
 
   while (1)
   {
+    if(note_size() > 0) {
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+
+      size_t _note_size = note_size();
+      for(size_t i = 0; i < _note_size; i++) {
+        sprintf(str, "note:%d\n", next_note());
+        HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
+      }
+
+      int16_t note = next_note() - 40;
+      note = (note > 0 ? note : 0);
+      pwm_set((uint16_t)(note * 78 / 12));
+
+    } else {
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+    }
+
+    if(note_size() > 1) {
+      HAL_Delay(90);
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+      HAL_Delay(10);
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+    }
+
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
-    for(float g = 45; g < 500; g += 100) {
-      for(float f = g; f < 400 + g; f += 50) {
-        // set_freq(f);
-        HAL_Delay(40);
-        // HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-      }
-    }
   }
   /* USER CODE END 3 */
 
