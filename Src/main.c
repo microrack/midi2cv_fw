@@ -261,22 +261,24 @@ int main(void)
 
       size_t _note_size = note_size();
       for(size_t i = 0; i < _note_size; i++) {
-        sprintf(str, "note:%d\n", next_note());
+        sprintf(str, "note:%d ", next_note());
         HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
       }
+      sprintf(str, "\n");
+      HAL_UART_Transmit(&huart2, (uint8_t*)str, (uint16_t)strlen(str), HAL_MAX_DELAY);
 
-      int16_t note = next_note() - 40;
-      note = (note > 0 ? note : 0);
-      pwm_set((uint16_t)(note * 78 / 12));
-
+      int16_t note = next_note() - 73;
+      if(note > 0) {
+        pwm_set((uint16_t)(note * 78 / 12));
+      }
     } else {
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
     }
 
     if(note_size() > 1) {
-      HAL_Delay(90);
+      HAL_Delay(25);
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-      HAL_Delay(10);
+      HAL_Delay(5);
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
     }
 

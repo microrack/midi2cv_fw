@@ -61,7 +61,7 @@ int midi_parse(struct midi_buffer *buf, unsigned char *bytes, int numbytes)
           num_callbacks++;
         }
   
-        buf->opcode = 0;
+        // buf->opcode = 0;
         buf->pos = 0;
       }
     }
